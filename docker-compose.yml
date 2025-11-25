@@ -36,6 +36,9 @@ services:
           printf 'listen_addr: "%s"\n' "$HEADSCALE_LISTEN_ADDR"
           printf 'metrics_listen_addr: "%s"\n' "$HEADSCALE_METRICS_ADDR"
           printf '\n'
+          printf 'noise:\n'
+          printf '  private_key_path: "/var/lib/headscale/noise_private.key"\n'
+          printf '\n'
           printf 'prefixes:\n'
           printf '  v4: "%s"\n' "$HEADSCALE_IPV4_PREFIX"
           printf '  v6: "%s"\n' "$HEADSCALE_IPV6_PREFIX"
