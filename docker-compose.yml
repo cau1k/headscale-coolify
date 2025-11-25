@@ -5,10 +5,7 @@ services:
     image: alpine:3.20
     restart: "no"
     environment:
-      # Tailnet DNS base domain for MagicDNS.
       HEADSCALE_DNS_BASE_DOMAIN: ${HEADSCALE_DNS_BASE_DOMAIN:-tailnet.example.internal}
-
-      # Optional overrides with sensible defaults.
       HEADSCALE_MAGIC_DNS: ${HEADSCALE_MAGIC_DNS:-true}
       HEADSCALE_IPV4_PREFIX: ${HEADSCALE_IPV4_PREFIX:-100.64.0.0/10}
       HEADSCALE_IPV6_PREFIX: ${HEADSCALE_IPV6_PREFIX:-fd7a:115c:a1e0::/48}
@@ -20,48 +17,51 @@ services:
     volumes:
       - headscale_config:/etc/headscale
       - headscale_run:/var/run/headscale
-    command: >
-      sh -c '
-        set -eu;
-        mkdir -p /etc/headscale /var/run/headscale;
+    command:
+      - /bin/sh
+      - -c
+      - |
+        set -eu
+        mkdir -p /etc/headscale /var/run/headscale
         if [ -z "$HEADSCALE_DNS_BASE_DOMAIN" ]; then
-          echo "HEADSCALE_DNS_BASE_DOMAIN is required" >&2; exit 1;
-        fi;
+          echo "HEADSCALE_DNS_BASE_DOMAIN is required" >&2
+          exit 1
+        fi
         if [ -z "$SERVICE_FQDN_HEADSCALE" ]; then
-          echo "SERVICE_FQDN_HEADSCALE is required (set by Coolify when you assign a domain)" >&2; exit 1;
-        fi;
-        cat > /etc/headscale/config.yaml <<EOF
-        server_url: "https://$SERVICE_FQDN_HEADSCALE"
-        listen_addr: "$HEADSCALE_LISTEN_ADDR"
-        metrics_listen_addr: "$HEADSCALE_METRICS_ADDR"
-
-        prefixes:
-          v4: "$HEADSCALE_IPV4_PREFIX"
-          v6: "$HEADSCALE_IPV6_PREFIX"
-
-        database:
-          type: "$HEADSCALE_DB_TYPE"
-          sqlite:
-            path: "$HEADSCALE_DB_SQLITE_PATH"
-
-        dns:
-          magic_dns: $HEADSCALE_MAGIC_DNS
-          base_domain: "$HEADSCALE_DNS_BASE_DOMAIN"
-          nameservers:
-            global:
-              - 1.1.1.1
-              - 1.0.0.1
-              - 8.8.8.8
-              - 8.8.4.4
-
-        log:
-          level: "$HEADSCALE_LOG_LEVEL"
-          format: "text"
-
-        unix_socket: "/var/run/headscale/headscale.sock"
-        unix_socket_permission: "0770"
-        EOF
-      '
+          echo "SERVICE_FQDN_HEADSCALE is required (set by Coolify when you assign a domain)" >&2
+          exit 1
+        fi
+        {
+          printf 'server_url: "%s"\n' "https://$SERVICE_FQDN_HEADSCALE"
+          printf 'listen_addr: "%s"\n' "$HEADSCALE_LISTEN_ADDR"
+          printf 'metrics_listen_addr: "%s"\n' "$HEADSCALE_METRICS_ADDR"
+          printf '\n'
+          printf 'prefixes:\n'
+          printf '  v4: "%s"\n' "$HEADSCALE_IPV4_PREFIX"
+          printf '  v6: "%s"\n' "$HEADSCALE_IPV6_PREFIX"
+          printf '\n'
+          printf 'database:\n'
+          printf '  type: "%s"\n' "$HEADSCALE_DB_TYPE"
+          printf '  sqlite:\n'
+          printf '    path: "%s"\n' "$HEADSCALE_DB_SQLITE_PATH"
+          printf '\n'
+          printf 'dns:\n'
+          printf '  magic_dns: %s\n' "$HEADSCALE_MAGIC_DNS"
+          printf '  base_domain: "%s"\n' "$HEADSCALE_DNS_BASE_DOMAIN"
+          printf '  nameservers:\n'
+          printf '    global:\n'
+          printf '      - 1.1.1.1\n'
+          printf '      - 1.0.0.1\n'
+          printf '      - 8.8.8.8\n'
+          printf '      - 8.8.4.4\n'
+          printf '\n'
+          printf 'log:\n'
+          printf '  level: "%s"\n' "$HEADSCALE_LOG_LEVEL"
+          printf '  format: "text"\n'
+          printf '\n'
+          printf 'unix_socket: "/var/run/headscale/headscale.sock"\n'
+          printf 'unix_socket_permission: "0770"\n'
+        } > /etc/headscale/config.yaml
 
   headscale:
     image: "headscale/headscale:0.27.1"
