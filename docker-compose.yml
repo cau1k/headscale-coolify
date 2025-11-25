@@ -1,135 +1,185 @@
 version: "3.9"
 
 services:
-  headscale-config:
-    image: alpine:3.20
-    restart: "no"
-    environment:
-      HEADSCALE_DNS_BASE_DOMAIN: ${HEADSCALE_DNS_BASE_DOMAIN:-tailnet.example.internal}
-      HEADSCALE_MAGIC_DNS: ${HEADSCALE_MAGIC_DNS:-true}
-      HEADSCALE_IPV4_PREFIX: ${HEADSCALE_IPV4_PREFIX:-100.64.0.0/10}
-      HEADSCALE_IPV6_PREFIX: ${HEADSCALE_IPV6_PREFIX:-fd7a:115c:a1e0::/48}
-      HEADSCALE_DB_TYPE: ${HEADSCALE_DB_TYPE:-sqlite}
-      HEADSCALE_DB_SQLITE_PATH: ${HEADSCALE_DB_SQLITE_PATH:-/var/lib/headscale/db.sqlite}
-      HEADSCALE_LISTEN_ADDR: ${HEADSCALE_LISTEN_ADDR:-0.0.0.0:8080}
-      HEADSCALE_METRICS_ADDR: ${HEADSCALE_METRICS_ADDR:-0.0.0.0:9090}
-      HEADSCALE_LOG_LEVEL: ${HEADSCALE_LOG_LEVEL:-info}
-    volumes:
-      - headscale_config:/etc/headscale
-      - headscale_data:/var/lib/headscale
-      - headscale_run:/var/run/headscale
-    command:
-      - /bin/sh
-      - -c
-      - |
-        set -eu
-        mkdir -p /etc/headscale /var/lib/headscale /var/run/headscale
-        if [ -z "$HEADSCALE_DNS_BASE_DOMAIN" ]; then
-          echo "HEADSCALE_DNS_BASE_DOMAIN is required" >&2
-          exit 1
-        fi
-        if [ -z "$SERVICE_FQDN_HEADSCALE" ]; then
-          echo "SERVICE_FQDN_HEADSCALE is required (set by Coolify when you assign a domain)" >&2
-          exit 1
-        fi
-        {
-          printf 'server_url: "%s"\n' "https://$SERVICE_FQDN_HEADSCALE"
-          printf 'listen_addr: "%s"\n' "$HEADSCALE_LISTEN_ADDR"
-          printf 'metrics_listen_addr: "%s"\n' "$HEADSCALE_METRICS_ADDR"
-          printf '\n'
-          printf 'noise:\n'
-          printf '  private_key_path: "/var/lib/headscale/noise_private.key"\n'
-          printf '\n'
-          printf 'prefixes:\n'
-          printf '  v4: "%s"\n' "$HEADSCALE_IPV4_PREFIX"
-          printf '  v6: "%s"\n' "$HEADSCALE_IPV6_PREFIX"
-          printf '\n'
-          printf 'database:\n'
-          printf '  type: "%s"\n' "$HEADSCALE_DB_TYPE"
-          printf '  sqlite:\n'
-          printf '    path: "%s"\n' "$HEADSCALE_DB_SQLITE_PATH"
-          printf '\n'
-          printf 'derp:\n'
-          printf '  urls:\n'
-          printf '    - https://controlplane.tailscale.com/derpmap/default\n'
-          printf '  paths: []\n'
-          printf '  auto_update_enabled: true\n'
-          printf '  update_frequency: 3h\n'
-          printf '\n'
-          printf 'dns:\n'
-          printf '  magic_dns: %s\n' "$HEADSCALE_MAGIC_DNS"
-          printf '  base_domain: "%s"\n' "$HEADSCALE_DNS_BASE_DOMAIN"
-          printf '  nameservers:\n'
-          printf '    global:\n'
-          printf '      - 1.1.1.1\n'
-          printf '      - 1.0.0.1\n'
-          printf '      - 8.8.8.8\n'
-          printf '      - 8.8.4.4\n'
-          printf '\n'
-          printf 'log:\n'
-          printf '  level: "%s"\n' "$HEADSCALE_LOG_LEVEL"
-          printf '  format: "text"\n'
-          printf '\n'
-          printf 'unix_socket: "/var/run/headscale/headscale.sock"\n'
-          printf 'unix_socket_permission: "0770"\n'
-        } > /etc/headscale/config.yaml
-
-  headscale-init:
-    image: "headscale/headscale:0.27.1-debug"
-    restart: "no"
-    depends_on:
-      headscale-config:
-        condition: service_completed_successfully
-    environment:
-      HEADSCALE_DNS_BASE_DOMAIN: ${HEADSCALE_DNS_BASE_DOMAIN:-tailnet.example.internal}
-      HEADSCALE_MAGIC_DNS: ${HEADSCALE_MAGIC_DNS:-true}
-      HEADSCALE_IPV4_PREFIX: ${HEADSCALE_IPV4_PREFIX:-100.64.0.0/10}
-      HEADSCALE_IPV6_PREFIX: ${HEADSCALE_IPV6_PREFIX:-fd7a:115c:a1e0::/48}
-      HEADSCALE_DB_TYPE: ${HEADSCALE_DB_TYPE:-sqlite}
-      HEADSCALE_DB_SQLITE_PATH: ${HEADSCALE_DB_SQLITE_PATH:-/var/lib/headscale/db.sqlite}
-      HEADSCALE_LISTEN_ADDR: ${HEADSCALE_LISTEN_ADDR:-0.0.0.0:8080}
-      HEADSCALE_METRICS_ADDR: ${HEADSCALE_METRICS_ADDR:-0.0.0.0:9090}
-      HEADSCALE_LOG_LEVEL: ${HEADSCALE_LOG_LEVEL:-info}
-    volumes:
-      - headscale_config:/etc/headscale
-      - headscale_data:/var/lib/headscale
-      - headscale_run:/var/run/headscale
-    command:
-      - /bin/sh
-      - -c
-      - |
-        set -eu
-        echo "[headscale-init] Creating namespace 'default' if needed..."
-        headscale namespaces create default || true
-        echo "[headscale-init] Creating reusable preauth key for namespace 'default' (no expiration)..."
-        headscale preauthkeys create --namespace default --reusable
-
   headscale:
-    image: "headscale/headscale:0.27.1-debug"
-    container_name: "headscale"
-    depends_on:
-      headscale-config:
-        condition: service_completed_successfully
-      headscale-init:
-        condition: service_completed_successfully
-    environment:
-      HEADSCALE_DNS_BASE_DOMAIN: ${HEADSCALE_DNS_BASE_DOMAIN:-tailnet.example.internal}
-      HEADSCALE_MAGIC_DNS: ${HEADSCALE_MAGIC_DNS:-true}
-      HEADSCALE_IPV4_PREFIX: ${HEADSCALE_IPV4_PREFIX:-100.64.0.0/10}
-      HEADSCALE_IPV6_PREFIX: ${HEADSCALE_IPV6_PREFIX:-fd7a:115c:a1e0::/48}
-      HEADSCALE_DB_TYPE: ${HEADSCALE_DB_TYPE:-sqlite}
-      HEADSCALE_DB_SQLITE_PATH: ${HEADSCALE_DB_SQLITE_PATH:-/var/lib/headscale/db.sqlite}
-      HEADSCALE_LISTEN_ADDR: ${HEADSCALE_LISTEN_ADDR:-0.0.0.0:8080}
-      HEADSCALE_METRICS_ADDR: ${HEADSCALE_METRICS_ADDR:-0.0.0.0:9090}
-      HEADSCALE_LOG_LEVEL: ${HEADSCALE_LOG_LEVEL:-info}
-    volumes:
-      - headscale_config:/etc/headscale
-      - headscale_data:/var/lib/headscale
-      - headscale_run:/var/run/headscale
-    command: ["serve"]
+    image: headscale/headscale:0.27.1-debug
+    container_name: headscale
     restart: unless-stopped
 
+    environment:
+      - SERVICE_FQDN_HEADSCALE
+      - HEADSCALE_DNS_BASE_DOMAIN=${HEADSCALE_DNS_BASE_DOMAIN:-tailnet.example.internal}
+      - HEADSCALE_SERVER_URL=${HEADSCALE_SERVER_URL:-}
+      - HEADSCALE_LISTEN_ADDR=${HEADSCALE_LISTEN_ADDR:-0.0.0.0:8080}
+      - HEADSCALE_METRICS_LISTEN_ADDR=${HEADSCALE_METRICS_LISTEN_ADDR:-0.0.0.0:9090}
+      - HEADSCALE_GRPC_LISTEN_ADDR=${HEADSCALE_GRPC_LISTEN_ADDR:-127.0.0.1:50443}
+      - HEADSCALE_PREFIX_V4=${HEADSCALE_PREFIX_V4:-100.64.0.0/10}
+      - HEADSCALE_PREFIX_V6=${HEADSCALE_PREFIX_V6:-fd7a:115c:a1e0::/48}
+      - HEADSCALE_LOG_LEVEL=${HEADSCALE_LOG_LEVEL:-info}
+      - HEADSCALE_RANDOMIZE_CLIENT_PORT=${HEADSCALE_RANDOMIZE_CLIENT_PORT:-false}
+      - HEADSCALE_PREAUTHKEY_EXPIRATION=${HEADSCALE_PREAUTHKEY_EXPIRATION:-87600h}
+      - HEADSCALE_USER_NAME=${HEADSCALE_USER_NAME:-default}
+
+    volumes:
+      - headscale-config:/etc/headscale
+      - headscale-data:/var/lib/headscale
+      - headscale-run:/var/run/headscale
+
+    entrypoint: ["/bin/sh", "-c"]
+    command: |
+      set -e
+      mkdir -p /etc/headscale /var/lib/headscale /var/run/headscale
+
+      if [ -n "$HEADSCALE_SERVER_URL" ]; then
+        SERVER_URL="$HEADSCALE_SERVER_URL"
+      else
+        if [ -z "$SERVICE_FQDN_HEADSCALE" ]; then
+          echo "ERROR: SERVICE_FQDN_HEADSCALE is not set and HEADSCALE_SERVER_URL is empty." >&2
+          echo "Assign a domain to the 'headscale' service in Coolify so SERVICE_FQDN_HEADSCALE is generated." >&2
+          exit 1
+        fi
+        SERVER_URL="https://$SERVICE_FQDN_HEADSCALE"
+      fi
+
+      echo "headscale: using server_url: $SERVER_URL"
+
+      {
+        printf 'server_url: "%s"\n' "$SERVER_URL"
+        printf 'listen_addr: "%s"\n' "$HEADSCALE_LISTEN_ADDR"
+        printf 'metrics_listen_addr: "%s"\n' "$HEADSCALE_METRICS_LISTEN_ADDR"
+        printf 'grpc_listen_addr: "%s"\n' "$HEADSCALE_GRPC_LISTEN_ADDR"
+        printf 'grpc_allow_insecure: false\n\n'
+
+        printf 'noise:\n'
+        printf '  private_key_path: "/var/lib/headscale/noise_private.key"\n\n'
+
+        printf 'prefixes:\n'
+        printf '  v4: "%s"\n' "$HEADSCALE_PREFIX_V4"
+        printf '  v6: "%s"\n' "$HEADSCALE_PREFIX_V6"
+        printf '  allocation: sequential\n\n'
+
+        printf 'derp:\n'
+        printf '  server:\n'
+        printf '    enabled: false\n'
+        printf '  urls:\n'
+        printf '    - https://controlplane.tailscale.com/derpmap/default\n'
+        printf '  paths: []\n'
+        printf '  auto_update_enabled: true\n'
+        printf '  update_frequency: 3h\n\n'
+
+        printf 'disable_check_updates: false\n'
+        printf 'ephemeral_node_inactivity_timeout: 30m\n\n'
+
+        printf 'database:\n'
+        printf '  type: "sqlite"\n'
+        printf '  debug: false\n'
+        printf '  sqlite:\n'
+        printf '    path: "/var/lib/headscale/db.sqlite"\n'
+        printf '    write_ahead_log: true\n'
+        printf '    wal_autocheckpoint: 1000\n\n'
+
+        printf 'acme_url: https://acme-v02.api.letsencrypt.org/directory\n'
+        printf 'acme_email: ""\n'
+        printf 'tls_letsencrypt_hostname: ""\n'
+        printf 'tls_letsencrypt_cache_dir: /var/lib/headscale/cache\n'
+        printf 'tls_letsencrypt_challenge_type: HTTP-01\n'
+        printf 'tls_letsencrypt_listen: ":http"\n'
+        printf 'tls_cert_path: ""\n'
+        printf 'tls_key_path: ""\n\n'
+
+        printf 'log:\n'
+        printf '  level: "%s"\n' "$HEADSCALE_LOG_LEVEL"
+        printf '  format: "text"\n\n'
+
+        printf 'dns:\n'
+        printf '  magic_dns: true\n'
+        printf '  base_domain: "%s"\n' "$HEADSCALE_DNS_BASE_DOMAIN"
+        printf '  override_local_dns: true\n'
+        printf '  nameservers:\n'
+        printf '    global:\n'
+        printf '      - 1.1.1.1\n'
+        printf '      - 1.0.0.1\n'
+        printf '      - 2606:4700:4700::1111\n'
+        printf '      - 2606:4700:4700::1001\n'
+        printf '    split: {}\n'
+        printf '  search_domains: []\n'
+        printf '  extra_records: []\n\n'
+
+        printf 'unix_socket: "/var/run/headscale/headscale.sock"\n'
+        printf 'unix_socket_permission: "0770"\n\n'
+
+        printf 'logtail:\n'
+        printf '  enabled: false\n\n'
+
+        printf 'randomize_client_port: %s\n' "$HEADSCALE_RANDOMIZE_CLIENT_PORT"
+      } > /etc/headscale/config.yaml
+
+      echo "headscale: generated /etc/headscale/config.yaml"
+      echo "headscale: starting headscale serve..."
+      exec headscale serve
+
+    healthcheck:
+      test: ["CMD", "headscale", "health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  headscale-init:
+    image: headscale/headscale:0.27.1-debug
+    restart: "no"
+    depends_on:
+      - headscale
+
+    environment:
+      - SERVICE_FQDN_HEADSCALE
+      - HEADSCALE_SERVER_URL=${HEADSCALE_SERVER_URL:-}
+      - HEADSCALE_PREAUTHKEY_EXPIRATION=${HEADSCALE_PREAUTHKEY_EXPIRATION:-87600h}
+      - HEADSCALE_USER_NAME=${HEADSCALE_USER_NAME:-default}
+
+    volumes:
+      - headscale-config:/etc/headscale
+      - headscale-data:/var/lib/headscale
+      - headscale-run:/var/run/headscale
+
+    entrypoint: ["/bin/sh", "-c"]
+    command: |
+      set -e
+
+      if [ -n "$HEADSCALE_SERVER_URL" ]; then
+        SERVER_URL="$HEADSCALE_SERVER_URL"
+      else
+        SERVER_URL="https://$SERVICE_FQDN_HEADSCALE"
+      fi
+
+      echo "headscale-init: waiting for headscale server to be ready..."
+
+      ATTEMPTS=0
+      MAX_ATTEMPTS=30
+      until headscale namespaces list >/dev/null 2>&1; do
+        ATTEMPTS=$((ATTEMPTS + 1))
+        if [ "$ATTEMPTS" -ge "$MAX_ATTEMPTS" ]; then
+          echo "headscale-init: headscale did not become ready after $MAX_ATTEMPTS attempts." >&2
+          exit 1
+        fi
+        echo "headscale-init: headscale not ready yet (attempt $ATTEMPTS/$MAX_ATTEMPTS), retrying in 2s..."
+        sleep 2
+      done
+
+      NS="$HEADSCALE_USER_NAME"
+      echo "headscale-init: ensuring namespace '$NS' exists..."
+      headscale namespaces create "$NS" >/dev/null 2>&1 || true
+
+      echo "======================================================================"
+      echo "headscale-init: creating reusable preauth key for namespace '$NS' with expiration $HEADSCALE_PREAUTHKEY_EXPIRATION ..."
+      KEY_OUTPUT="$(headscale preauthkeys create --namespace "$NS" --reusable --expiration "$HEADSCALE_PREAUTHKEY_EXPIRATION" || true)"
+      echo "$KEY_OUTPUT"
+      echo ""
+      echo "Use the key above with:"
+      echo "  tailscale up --login-server $SERVER_URL --authkey <KEY_FROM_OUTPUT>"
+      echo "======================================================================"
+
 volumes:
-  headscale_config:
-  headscale_data:
-  headscale_run:
+  headscale-config:
+  headscale-data:
+  headscale-run:
