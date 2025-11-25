@@ -1,38 +1,27 @@
 version: "3.9"
 
-x-headscale-env: &headscale-env
-  # Magic env var: Coolify will populate this with the FQDN of the
-  # `headscale` service once you assign a domain in the dashboard.
-  SERVICE_FQDN_HEADSCALE: ""
-
-  # Tailnet DNS base domain for MagicDNS.
-  # Example: tailnet.example.internal
-  HEADSCALE_DNS_BASE_DOMAIN: "tailnet.example.internal"
-
-  # Enable or disable MagicDNS.
-  HEADSCALE_MAGIC_DNS: "true"
-
-  # IP prefixes for your tailnet.
-  HEADSCALE_IPV4_PREFIX: "100.64.0.0/10"
-  HEADSCALE_IPV6_PREFIX: "fd7a:115c:a1e0::/48"
-
-  # Database configuration (SQLite by default).
-  HEADSCALE_DB_TYPE: "sqlite"
-  HEADSCALE_DB_SQLITE_PATH: "/var/lib/headscale/db.sqlite"
-
-  # Listen addresses.
-  HEADSCALE_LISTEN_ADDR: "0.0.0.0:8080"
-  HEADSCALE_METRICS_ADDR: "0.0.0.0:9090"
-
-  # Logging.
-  HEADSCALE_LOG_LEVEL: "info"
-
 services:
   headscale-config:
     image: alpine:3.20
     restart: "no"
     environment:
-      <<: *headscale-env
+      # Magic env var – Coolify populates this based on the
+      # domain you assign to the `headscale` service.
+      SERVICE_FQDN_HEADSCALE:
+
+      # Tailnet DNS base domain for MagicDNS (you MUST set this
+      # in the Coolify UI).
+      HEADSCALE_DNS_BASE_DOMAIN:
+
+      # Optional overrides with sensible defaults.
+      HEADSCALE_MAGIC_DNS: "true"
+      HEADSCALE_IPV4_PREFIX: "100.64.0.0/10"
+      HEADSCALE_IPV6_PREFIX: "fd7a:115c:a1e0::/48"
+      HEADSCALE_DB_TYPE: "sqlite"
+      HEADSCALE_DB_SQLITE_PATH: "/var/lib/headscale/db.sqlite"
+      HEADSCALE_LISTEN_ADDR: "0.0.0.0:8080"
+      HEADSCALE_METRICS_ADDR: "0.0.0.0:9090"
+      HEADSCALE_LOG_LEVEL: "info"
     volumes:
       - headscale_config:/etc/headscale
       - headscale_run:/var/run/headscale
@@ -40,25 +29,29 @@ services:
       sh -c '
         set -eu;
         mkdir -p /etc/headscale /var/run/headscale;
-        : "${HEADSCALE_DNS_BASE_DOMAIN:?HEADSCALE_DNS_BASE_DOMAIN is required}";
-        : "${SERVICE_FQDN_HEADSCALE:?SERVICE_FQDN_HEADSCALE is required (set by Coolify when you assign a domain)}";
+        if [ -z "$HEADSCALE_DNS_BASE_DOMAIN" ]; then
+          echo "HEADSCALE_DNS_BASE_DOMAIN is required" >&2; exit 1;
+        fi;
+        if [ -z "$SERVICE_FQDN_HEADSCALE" ]; then
+          echo "SERVICE_FQDN_HEADSCALE is required (set by Coolify when you assign a domain)" >&2; exit 1;
+        fi;
         cat > /etc/headscale/config.yaml <<EOF
-        server_url: "https://${SERVICE_FQDN_HEADSCALE}"
-        listen_addr: "${HEADSCALE_LISTEN_ADDR}"
-        metrics_listen_addr: "${HEADSCALE_METRICS_ADDR}"
+        server_url: "https://$SERVICE_FQDN_HEADSCALE"
+        listen_addr: "$HEADSCALE_LISTEN_ADDR"
+        metrics_listen_addr: "$HEADSCALE_METRICS_ADDR"
 
         prefixes:
-          v4: "${HEADSCALE_IPV4_PREFIX}"
-          v6: "${HEADSCALE_IPV6_PREFIX}"
+          v4: "$HEADSCALE_IPV4_PREFIX"
+          v6: "$HEADSCALE_IPV6_PREFIX"
 
         database:
-          type: "${HEADSCALE_DB_TYPE}"
+          type: "$HEADSCALE_DB_TYPE"
           sqlite:
-            path: "${HEADSCALE_DB_SQLITE_PATH}"
+            path: "$HEADSCALE_DB_SQLITE_PATH"
 
         dns:
-          magic_dns: ${HEADSCALE_MAGIC_DNS}
-          base_domain: "${HEADSCALE_DNS_BASE_DOMAIN}"
+          magic_dns: $HEADSCALE_MAGIC_DNS
+          base_domain: "$HEADSCALE_DNS_BASE_DOMAIN"
           nameservers:
             global:
               - 1.1.1.1
@@ -67,7 +60,7 @@ services:
               - 8.8.4.4
 
         log:
-          level: "${HEADSCALE_LOG_LEVEL}"
+          level: "$HEADSCALE_LOG_LEVEL"
           format: "text"
 
         unix_socket: "/var/run/headscale/headscale.sock"
@@ -82,7 +75,16 @@ services:
       headscale-config:
         condition: service_completed_successfully
     environment:
-      <<: *headscale-env
+      SERVICE_FQDN_HEADSCALE:
+      HEADSCALE_DNS_BASE_DOMAIN:
+      HEADSCALE_MAGIC_DNS: "true"
+      HEADSCALE_IPV4_PREFIX: "100.64.0.0/10"
+      HEADSCALE_IPV6_PREFIX: "fd7a:115c:a1e0::/48"
+      HEADSCALE_DB_TYPE: "sqlite"
+      HEADSCALE_DB_SQLITE_PATH: "/var/lib/headscale/db.sqlite"
+      HEADSCALE_LISTEN_ADDR: "0.0.0.0:8080"
+      HEADSCALE_METRICS_ADDR: "0.0.0.0:9090"
+      HEADSCALE_LOG_LEVEL: "info"
     volumes:
       - headscale_config:/etc/headscale
       - headscale_data:/var/lib/headscale
