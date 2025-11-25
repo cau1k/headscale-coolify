@@ -16,13 +16,14 @@ services:
       HEADSCALE_LOG_LEVEL: ${HEADSCALE_LOG_LEVEL:-info}
     volumes:
       - headscale_config:/etc/headscale
+      - headscale_data:/var/lib/headscale
       - headscale_run:/var/run/headscale
     command:
       - /bin/sh
       - -c
       - |
         set -eu
-        mkdir -p /etc/headscale /var/run/headscale
+        mkdir -p /etc/headscale /var/lib/headscale /var/run/headscale
         if [ -z "$HEADSCALE_DNS_BASE_DOMAIN" ]; then
           echo "HEADSCALE_DNS_BASE_DOMAIN is required" >&2
           exit 1
@@ -73,11 +74,43 @@ services:
           printf 'unix_socket_permission: "0770"\n'
         } > /etc/headscale/config.yaml
 
+  headscale-init:
+    image: "headscale/headscale:0.27.1-debug"
+    restart: "no"
+    depends_on:
+      headscale-config:
+        condition: service_completed_successfully
+    environment:
+      HEADSCALE_DNS_BASE_DOMAIN: ${HEADSCALE_DNS_BASE_DOMAIN:-tailnet.example.internal}
+      HEADSCALE_MAGIC_DNS: ${HEADSCALE_MAGIC_DNS:-true}
+      HEADSCALE_IPV4_PREFIX: ${HEADSCALE_IPV4_PREFIX:-100.64.0.0/10}
+      HEADSCALE_IPV6_PREFIX: ${HEADSCALE_IPV6_PREFIX:-fd7a:115c:a1e0::/48}
+      HEADSCALE_DB_TYPE: ${HEADSCALE_DB_TYPE:-sqlite}
+      HEADSCALE_DB_SQLITE_PATH: ${HEADSCALE_DB_SQLITE_PATH:-/var/lib/headscale/db.sqlite}
+      HEADSCALE_LISTEN_ADDR: ${HEADSCALE_LISTEN_ADDR:-0.0.0.0:8080}
+      HEADSCALE_METRICS_ADDR: ${HEADSCALE_METRICS_ADDR:-0.0.0.0:9090}
+      HEADSCALE_LOG_LEVEL: ${HEADSCALE_LOG_LEVEL:-info}
+    volumes:
+      - headscale_config:/etc/headscale
+      - headscale_data:/var/lib/headscale
+      - headscale_run:/var/run/headscale
+    command:
+      - /bin/sh
+      - -c
+      - |
+        set -eu
+        echo "[headscale-init] Creating namespace 'default' if needed..."
+        headscale namespaces create default || true
+        echo "[headscale-init] Creating reusable preauth key for namespace 'default' (no expiration)..."
+        headscale preauthkeys create --namespace default --reusable
+
   headscale:
-    image: "headscale/headscale:0.27.1"
+    image: "headscale/headscale:0.27.1-debug"
     container_name: "headscale"
     depends_on:
       headscale-config:
+        condition: service_completed_successfully
+      headscale-init:
         condition: service_completed_successfully
     environment:
       HEADSCALE_DNS_BASE_DOMAIN: ${HEADSCALE_DNS_BASE_DOMAIN:-tailnet.example.internal}
