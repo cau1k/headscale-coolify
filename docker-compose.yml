@@ -25,7 +25,7 @@ services:
       - headscale-data:/var/lib/headscale
       - headscale-run:/var/run/headscale
 
-    entrypoint: ["/bin/sh", "-c"]
+    entrypoint: ["sh", "-c"]
     command: |
       set -e
       mkdir -p /etc/headscale /var/lib/headscale /var/run/headscale
@@ -142,7 +142,7 @@ services:
       - headscale-data:/var/lib/headscale
       - headscale-run:/var/run/headscale
 
-    entrypoint: ["/bin/sh", "-c"]
+    entrypoint: ["sh", "-c"]
     command: |
       set -e
 
