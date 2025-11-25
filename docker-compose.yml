@@ -7,21 +7,20 @@ services:
     environment:
       # Magic env var – Coolify populates this based on the
       # domain you assign to the `headscale` service.
-      SERVICE_FQDN_HEADSCALE:
+      SERVICE_FQDN_HEADSCALE: ${SERVICE_FQDN_HEADSCALE:-}
 
-      # Tailnet DNS base domain for MagicDNS (you MUST set this
-      # in the Coolify UI).
-      HEADSCALE_DNS_BASE_DOMAIN:
+      # Tailnet DNS base domain for MagicDNS.
+      HEADSCALE_DNS_BASE_DOMAIN: ${HEADSCALE_DNS_BASE_DOMAIN:-tailnet.example.internal}
 
       # Optional overrides with sensible defaults.
-      HEADSCALE_MAGIC_DNS: "true"
-      HEADSCALE_IPV4_PREFIX: "100.64.0.0/10"
-      HEADSCALE_IPV6_PREFIX: "fd7a:115c:a1e0::/48"
-      HEADSCALE_DB_TYPE: "sqlite"
-      HEADSCALE_DB_SQLITE_PATH: "/var/lib/headscale/db.sqlite"
-      HEADSCALE_LISTEN_ADDR: "0.0.0.0:8080"
-      HEADSCALE_METRICS_ADDR: "0.0.0.0:9090"
-      HEADSCALE_LOG_LEVEL: "info"
+      HEADSCALE_MAGIC_DNS: ${HEADSCALE_MAGIC_DNS:-true}
+      HEADSCALE_IPV4_PREFIX: ${HEADSCALE_IPV4_PREFIX:-100.64.0.0/10}
+      HEADSCALE_IPV6_PREFIX: ${HEADSCALE_IPV6_PREFIX:-fd7a:115c:a1e0::/48}
+      HEADSCALE_DB_TYPE: ${HEADSCALE_DB_TYPE:-sqlite}
+      HEADSCALE_DB_SQLITE_PATH: ${HEADSCALE_DB_SQLITE_PATH:-/var/lib/headscale/db.sqlite}
+      HEADSCALE_LISTEN_ADDR: ${HEADSCALE_LISTEN_ADDR:-0.0.0.0:8080}
+      HEADSCALE_METRICS_ADDR: ${HEADSCALE_METRICS_ADDR:-0.0.0.0:9090}
+      HEADSCALE_LOG_LEVEL: ${HEADSCALE_LOG_LEVEL:-info}
     volumes:
       - headscale_config:/etc/headscale
       - headscale_run:/var/run/headscale
@@ -75,16 +74,16 @@ services:
       headscale-config:
         condition: service_completed_successfully
     environment:
-      SERVICE_FQDN_HEADSCALE:
-      HEADSCALE_DNS_BASE_DOMAIN:
-      HEADSCALE_MAGIC_DNS: "true"
-      HEADSCALE_IPV4_PREFIX: "100.64.0.0/10"
-      HEADSCALE_IPV6_PREFIX: "fd7a:115c:a1e0::/48"
-      HEADSCALE_DB_TYPE: "sqlite"
-      HEADSCALE_DB_SQLITE_PATH: "/var/lib/headscale/db.sqlite"
-      HEADSCALE_LISTEN_ADDR: "0.0.0.0:8080"
-      HEADSCALE_METRICS_ADDR: "0.0.0.0:9090"
-      HEADSCALE_LOG_LEVEL: "info"
+      SERVICE_FQDN_HEADSCALE: ${SERVICE_FQDN_HEADSCALE:-}
+      HEADSCALE_DNS_BASE_DOMAIN: ${HEADSCALE_DNS_BASE_DOMAIN:-tailnet.example.internal}
+      HEADSCALE_MAGIC_DNS: ${HEADSCALE_MAGIC_DNS:-true}
+      HEADSCALE_IPV4_PREFIX: ${HEADSCALE_IPV4_PREFIX:-100.64.0.0/10}
+      HEADSCALE_IPV6_PREFIX: ${HEADSCALE_IPV6_PREFIX:-fd7a:115c:a1e0::/48}
+      HEADSCALE_DB_TYPE: ${HEADSCALE_DB_TYPE:-sqlite}
+      HEADSCALE_DB_SQLITE_PATH: ${HEADSCALE_DB_SQLITE_PATH:-/var/lib/headscale/db.sqlite}
+      HEADSCALE_LISTEN_ADDR: ${HEADSCALE_LISTEN_ADDR:-0.0.0.0:8080}
+      HEADSCALE_METRICS_ADDR: ${HEADSCALE_METRICS_ADDR:-0.0.0.0:9090}
+      HEADSCALE_LOG_LEVEL: ${HEADSCALE_LOG_LEVEL:-info}
     volumes:
       - headscale_config:/etc/headscale
       - headscale_data:/var/lib/headscale
