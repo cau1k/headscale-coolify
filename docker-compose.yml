@@ -48,6 +48,13 @@ services:
           printf '  sqlite:\n'
           printf '    path: "%s"\n' "$HEADSCALE_DB_SQLITE_PATH"
           printf '\n'
+          printf 'derp:\n'
+          printf '  urls:\n'
+          printf '    - https://controlplane.tailscale.com/derpmap/default\n'
+          printf '  paths: []\n'
+          printf '  auto_update_enabled: true\n'
+          printf '  update_frequency: 3h\n'
+          printf '\n'
           printf 'dns:\n'
           printf '  magic_dns: %s\n' "$HEADSCALE_MAGIC_DNS"
           printf '  base_domain: "%s"\n' "$HEADSCALE_DNS_BASE_DOMAIN"
