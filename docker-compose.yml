@@ -1,19 +1,96 @@
 version: "3.9"
 
+x-headscale-env: &headscale-env
+  # Magic env var: Coolify will populate this with the FQDN of the
+  # `headscale` service once you assign a domain in the dashboard.
+  SERVICE_FQDN_HEADSCALE: ""
+
+  # Tailnet DNS base domain for MagicDNS.
+  # Example: tailnet.example.internal
+  HEADSCALE_DNS_BASE_DOMAIN: "tailnet.example.internal"
+
+  # Enable or disable MagicDNS.
+  HEADSCALE_MAGIC_DNS: "true"
+
+  # IP prefixes for your tailnet.
+  HEADSCALE_IPV4_PREFIX: "100.64.0.0/10"
+  HEADSCALE_IPV6_PREFIX: "fd7a:115c:a1e0::/48"
+
+  # Database configuration (SQLite by default).
+  HEADSCALE_DB_TYPE: "sqlite"
+  HEADSCALE_DB_SQLITE_PATH: "/var/lib/headscale/db.sqlite"
+
+  # Listen addresses.
+  HEADSCALE_LISTEN_ADDR: "0.0.0.0:8080"
+  HEADSCALE_METRICS_ADDR: "0.0.0.0:9090"
+
+  # Logging.
+  HEADSCALE_LOG_LEVEL: "info"
+
 services:
-  headscale:
-    image: "headscale/headscale:latest"
-    container_name: "headscale"
-    command: ["headscale", "serve"]
-    # Headscale listens on this internal HTTP port. Coolify will expose it and
-    # terminate TLS via its own reverse proxy (Traefik).
-    ports:
-      - "8080"
+  headscale-config:
+    image: alpine:3.20
+    restart: "no"
+    environment:
+      <<: *headscale-env
     volumes:
-      - ./headscale/config:/etc/headscale
-      - headscale-data:/var/lib/headscale
+      - headscale_config:/etc/headscale
+      - headscale_run:/var/run/headscale
+    command: >
+      sh -c '
+        set -eu;
+        mkdir -p /etc/headscale /var/run/headscale;
+        : "${HEADSCALE_DNS_BASE_DOMAIN:?HEADSCALE_DNS_BASE_DOMAIN is required}";
+        : "${SERVICE_FQDN_HEADSCALE:?SERVICE_FQDN_HEADSCALE is required (set by Coolify when you assign a domain)}";
+        cat > /etc/headscale/config.yaml <<EOF
+        server_url: "https://${SERVICE_FQDN_HEADSCALE}"
+        listen_addr: "${HEADSCALE_LISTEN_ADDR}"
+        metrics_listen_addr: "${HEADSCALE_METRICS_ADDR}"
+
+        prefixes:
+          v4: "${HEADSCALE_IPV4_PREFIX}"
+          v6: "${HEADSCALE_IPV6_PREFIX}"
+
+        database:
+          type: "${HEADSCALE_DB_TYPE}"
+          sqlite:
+            path: "${HEADSCALE_DB_SQLITE_PATH}"
+
+        dns:
+          magic_dns: ${HEADSCALE_MAGIC_DNS}
+          base_domain: "${HEADSCALE_DNS_BASE_DOMAIN}"
+          nameservers:
+            global:
+              - 1.1.1.1
+              - 1.0.0.1
+              - 8.8.8.8
+              - 8.8.4.4
+
+        log:
+          level: "${HEADSCALE_LOG_LEVEL}"
+          format: "text"
+
+        unix_socket: "/var/run/headscale/headscale.sock"
+        unix_socket_permission: "0770"
+        EOF
+      '
+
+  headscale:
+    image: "headscale/headscale:0.27.1"
+    container_name: "headscale"
+    depends_on:
+      headscale-config:
+        condition: service_completed_successfully
+    environment:
+      <<: *headscale-env
+    volumes:
+      - headscale_config:/etc/headscale
+      - headscale_data:/var/lib/headscale
+      - headscale_run:/var/run/headscale
+    command: ["headscale", "serve"]
     restart: unless-stopped
 
 volumes:
-  headscale-data:
-    driver: local
+  headscale_config:
+  headscale_data:
+  headscale_run:
