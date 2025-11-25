@@ -1,0 +1,16 @@
+# Local headscale configuration (copy of config.example.yaml with your values)
+headscale/config.yaml
+
+# Local headscale data, if you bind-mount instead of using a named volume
+headscale/data/
+
+# Docker / Compose
+.env
+.env.local
+
+# Editor / OS cruft
+.DS_Store
+*.swp
+*.swo
+.idea/
+.vscode/

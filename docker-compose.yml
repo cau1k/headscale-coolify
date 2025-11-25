@@ -1,0 +1,19 @@
+version: "3.9"
+
+services:
+  headscale:
+    image: "headscale/headscale:latest"
+    container_name: "headscale"
+    command: ["headscale", "serve"]
+    # Headscale listens on this internal HTTP port. Coolify will expose it and
+    # terminate TLS via its own reverse proxy (Traefik).
+    ports:
+      - "8080"
+    volumes:
+      - ./headscale/config:/etc/headscale
+      - headscale-data:/var/lib/headscale
+    restart: unless-stopped
+
+volumes:
+  headscale-data:
+    driver: local

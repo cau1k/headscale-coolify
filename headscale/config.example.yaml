@@ -1,0 +1,54 @@
+# Example headscale configuration for Coolify deployment.
+# Copy this file to `config.yaml` and edit values for your environment.
+
+# Public URL where clients and web calls reach your headscale server.
+# This should match the HTTPS domain you assign in Coolify.
+server_url: "https://headscale.example.com"
+
+# Internal listen address inside the container.
+listen_addr: "0.0.0.0:8080"
+
+# Optional: metrics and gRPC listen addresses (can be left as defaults or disabled).
+metrics_listen_addr: "0.0.0.0:9090"
+grpc_listen_addr: "0.0.0.0:50443"
+
+db_type: "sqlite"
+# SQLite database path inside the container. This directory is backed by
+# the `headscale-data` volume in `docker-compose.yml`.
+db_path: "/var/lib/headscale/db.sqlite"
+
+# Paths for node keys.
+private_key_path: "/var/lib/headscale/private.key"
+noise:
+  private_key_path: "/var/lib/headscale/noise_private.key"
+
+# IP ranges for your tailnet. These defaults are common choices.
+ip_prefixes:
+  - "100.64.0.0/10"
+  - "fd7a:115c:a1e0::/48"
+
+# Basic DNS / MagicDNS settings. Adjust `base_domain` to your preferred
+# internal tailnet domain.
+dns_config:
+  magic_dns: true
+  base_domain: "tailnet.example.internal"
+  nameservers:
+    - "1.1.1.1"
+    - "8.8.8.8"
+
+# Logging configuration.
+log:
+  level: "info"
+
+# DERP configuration: by default headscale can use the public DERP network.
+# You can add a custom DERP server here if needed later.
+# derp:
+#   auto_update_enabled: true
+#   update_frequency: "1m"
+
+# OIDC / SSO can be configured later if desired; keep it simple initially.
+# oidc:
+#   issuer: "https://your-issuer"
+#   client_id: "your-client-id"
+#   client_secret: "your-client-secret"
+#   scope: ["openid", "profile", "email"]
