@@ -83,7 +83,7 @@ services:
       - headscale_config:/etc/headscale
       - headscale_data:/var/lib/headscale
       - headscale_run:/var/run/headscale
-    command: ["headscale", "serve"]
+    command: ["serve"]
     restart: unless-stopped
 
 volumes:
