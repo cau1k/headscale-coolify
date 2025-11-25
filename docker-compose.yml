@@ -5,10 +5,6 @@ services:
     image: alpine:3.20
     restart: "no"
     environment:
-      # Magic env var – Coolify populates this based on the
-      # domain you assign to the `headscale` service.
-      SERVICE_FQDN_HEADSCALE: ${SERVICE_FQDN_HEADSCALE:-}
-
       # Tailnet DNS base domain for MagicDNS.
       HEADSCALE_DNS_BASE_DOMAIN: ${HEADSCALE_DNS_BASE_DOMAIN:-tailnet.example.internal}
 
@@ -74,7 +70,6 @@ services:
       headscale-config:
         condition: service_completed_successfully
     environment:
-      SERVICE_FQDN_HEADSCALE: ${SERVICE_FQDN_HEADSCALE:-}
       HEADSCALE_DNS_BASE_DOMAIN: ${HEADSCALE_DNS_BASE_DOMAIN:-tailnet.example.internal}
       HEADSCALE_MAGIC_DNS: ${HEADSCALE_MAGIC_DNS:-true}
       HEADSCALE_IPV4_PREFIX: ${HEADSCALE_IPV4_PREFIX:-100.64.0.0/10}
